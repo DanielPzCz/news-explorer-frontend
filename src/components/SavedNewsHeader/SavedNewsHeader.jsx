@@ -1,6 +1,5 @@
 import "./SavedNewsHeader.css";
 
-// Devuelve las palabras clave ordenadas de mayor a menor popularidad.
 function getSortedKeywords(articles) {
   const counter = {};
 

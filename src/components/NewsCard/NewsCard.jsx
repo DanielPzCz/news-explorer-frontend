@@ -1,5 +1,6 @@
 import "./NewsCard.css";
 import formatDate from "../../utils/formatDate.js";
+import placeholderImage from "../../images/placeholder.svg";
 
 export default function NewsCard(props) {
   const { article, loggedIn, isSaved, isSavedPage, onSave, onDelete } = props;
@@ -21,7 +22,10 @@ export default function NewsCard(props) {
         <img
           alt={article.title}
           className="news-card__image"
-          src={article.image}
+          src={article.image || placeholderImage}
+          onError={(event) => {
+            event.target.src = placeholderImage;
+          }}
         />
         {isSavedPage ? (
           <>

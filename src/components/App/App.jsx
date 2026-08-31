@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router";
 import "./App.css";
 
@@ -8,22 +8,40 @@ import SavedNews from "../SavedNews/SavedNews.jsx";
 import Footer from "../Footer/Footer.jsx";
 import PopupWithForm from "../PopupWithForm/PopupWithForm.jsx";
 
-import { MOCK_ARTICLES, CARDS_PER_PAGE } from "../../utils/constants.js";
+import newsApi from "../../utils/NewsApi.js";
+import {
+  MOCK_SAVED_ARTICLES,
+  CARDS_PER_PAGE,
+  SEARCH_ERROR_MESSAGE,
+} from "../../utils/constants.js";
+
+function getStoredArticles() {
+  try {
+    return JSON.parse(localStorage.getItem("articles")) || [];
+  } catch {
+    return [];
+  }
+}
 
 function App() {
-  // La autenticación real se implementará en la etapa 3 junto con el
-  // back-end. Por ahora el inicio de sesión es simulado para poder
-  // revisar los dos estados del encabezado y la página de guardados.
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const [activePopup, setActivePopup] = useState(null);
 
-  const [hasSearched, setHasSearched] = useState(false);
-  const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState(getStoredArticles);
+  const [hasSearched, setHasSearched] = useState(articles.length > 0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [visibleCount, setVisibleCount] = useState(CARDS_PER_PAGE);
-  const [savedArticles, setSavedArticles] = useState(MOCK_ARTICLES);
+  const [savedArticles, setSavedArticles] = useState(MOCK_SAVED_ARTICLES);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (articles.length > 0) {
+      localStorage.setItem("articles", JSON.stringify(articles));
+    }
+  }, [articles]);
 
   function handleOpenLogin() {
     setActivePopup("login");
@@ -37,11 +55,43 @@ function App() {
     setActivePopup(null);
   }
 
-  function handleSearch() {
-    // En la etapa 1.2 esta función hará la solicitud real a News API.
-    setArticles(MOCK_ARTICLES);
-    setVisibleCount(CARDS_PER_PAGE);
+  function handleSearch(keyword) {
+    setIsSearching(true);
     setHasSearched(true);
+    setSearchError("");
+    setVisibleCount(CARDS_PER_PAGE);
+
+    newsApi
+      .getNews(keyword)
+      .then((data) => {
+        const formattedArticles = (data.articles || []).map(
+          (article, index) => ({
+            _id: `${keyword}-${index}`,
+            keyword: keyword,
+            title: article.title || "",
+            text: article.description || "",
+            date: article.publishedAt || "",
+            source: article.source ? article.source.name : "",
+            link: article.url,
+            image: article.urlToImage || "",
+          }),
+        );
+
+        setArticles(formattedArticles);
+        localStorage.setItem("keyword", keyword);
+
+        if (formattedArticles.length === 0) {
+          localStorage.removeItem("articles");
+        }
+      })
+      .catch((error) => {
+        console.error("Error al buscar noticias:", error);
+        setArticles([]);
+        setSearchError(SEARCH_ERROR_MESSAGE);
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
   }
 
   function handleShowMore() {
@@ -83,7 +133,6 @@ function App() {
   }
 
   function handleDeleteArticle(article) {
-    // Se compara por _id: dos artículos distintos podrían compartir enlace.
     setSavedArticles(
       savedArticles.filter((savedArticle) => savedArticle._id !== article._id),
     );
@@ -104,8 +153,8 @@ function App() {
           element={
             <Main
               onSearch={handleSearch}
-              isSearching={false}
-              searchError=""
+              isSearching={isSearching}
+              searchError={searchError}
               hasSearched={hasSearched}
               articles={articles}
               visibleCount={visibleCount}

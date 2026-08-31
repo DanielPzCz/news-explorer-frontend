@@ -5,20 +5,17 @@ export const EMPTY_KEYWORD_MESSAGE = "Por favor, introduce una palabra clave";
 
 export const CARDS_PER_PAGE = 3;
 
-// Datos de muestra para el maquetado. Se sustituirán por los datos
-// reales de la API en las siguientes etapas del proyecto.
 import cardCorgi from "../images/card-corgi.jpg";
 import cardLake from "../images/card-lake.jpg";
 import cardMoose from "../images/card-moose.jpg";
-import cardNight from "../images/card-night.jpg";
-import cardGeyser from "../images/card-geyser.jpg";
 
-export const MOCK_ARTICLES = [
+export const MOCK_SAVED_ARTICLES = [
   {
     _id: "mock-1",
     keyword: "Naturaleza",
-    title: 'Todo el mundo necesita un "lugar de reflexión" especial en la naturaleza',
-    text: 'Desde que leí el influyente libro de Richard Louv, "El último niño en el bosque", la idea de tener un "lugar de reflexión" especial para mí se me ha quedado grabada. Este consejo, que Louv atribuye al educador de la naturaleza Jon Young, es para que tanto los adultos como los niños encuentren...',
+    title:
+      'Todo el mundo necesita un "lugar de reflexión" especial en la naturaleza',
+    text: 'Desde que leí el influyente libro de Richard Louv, "El último niño en el bosque", la idea de tener un "lugar de reflexión" especial para mí se me ha quedado grabada.',
     date: "2020-11-04T00:00:00.000Z",
     source: "treehugger",
     link: "https://www.treehugger.com/everyone-needs-a-sit-spot-in-nature-4858112",
@@ -43,25 +40,5 @@ export const MOCK_ARTICLES = [
     source: "national geographic",
     link: "https://www.nationalgeographic.com/travel/article/grand-teton-crest-trail",
     image: cardMoose,
-  },
-  {
-    _id: "mock-4",
-    keyword: "Yellowstone",
-    title: "Fotos nostálgicas hechas por turistas en los parques nacionales de Estados Unidos",
-    text: "Los parques nacionales de Estados Unidos reciben cada año a millones de visitantes que llegan con la cámara lista para capturar paisajes que parecen de otro planeta.",
-    date: "2020-10-19T00:00:00.000Z",
-    source: "national geographic",
-    link: "https://www.nationalgeographic.com/travel/article/nostalgic-national-park-photos",
-    image: cardGeyser,
-  },
-  {
-    _id: "mock-5",
-    keyword: "Fotografía",
-    title: "Cómo fotografiar el cielo nocturno",
-    text: "Las fotografías de larga exposición del cielo nocturno revelan estrellas que giran alrededor del polo celeste, un espectáculo invisible para el ojo humano.",
-    date: "2020-08-12T00:00:00.000Z",
-    source: "treehugger",
-    link: "https://www.treehugger.com/how-to-photograph-the-night-sky-5069155",
-    image: cardNight,
   },
 ];
