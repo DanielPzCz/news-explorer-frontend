@@ -1,3 +1,57 @@
+@import url("./vendor/normalize.css");
+@import url("./vendor/fonts.css");
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --color-black: #1a1b22;
+  --color-gray: #b6bcbf;
+  --color-blue: #2f71e5;
+  --color-blue-hover: #347eff;
+  --color-blue-active: #2a65cc;
+  --color-background: #f5f6f7;
+  --color-border: #d1d2d6;
+  --color-error: #ff0000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Roboto", Arial, sans-serif;
+  font-weight: 400;
+  color: var(--color-black);
+  background-color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input {
+  font-family: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
 }
