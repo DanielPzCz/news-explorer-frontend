@@ -81,13 +81,23 @@ El cambio es automático, no hay que tocar nada al desplegar.
 
 La aplicación se sirve como sitio estático con **nginx** en un servidor de Vultr.
 
-```bash
-# 1. Compila la versión de producción
-npm run build
+Sustituye `usuario` y `servidor` por los tuyos.
 
-# 2. Copia el resultado al servidor
-scp -r dist/* usuario@TU_SERVIDOR:/var/www/news-explorer/
+```bash
+# 1. En tu máquina: compila la versión de producción
+npm run build
+scp -r dist usuario@servidor:~/dist-nuevo
 ```
+
+```bash
+# 2. En el servidor: reemplaza el contenido publicado
+sudo rm -rf /var/www/news-explorer/*
+sudo cp -r ~/dist-nuevo/* /var/www/news-explorer/
+sudo chown -R www-data:www-data /var/www/news-explorer
+rm -rf ~/dist-nuevo
+```
+
+Se borra la carpeta antes de copiar porque Vite nombra los archivos con un hash del contenido: en cada compilación cambian de nombre y, sin la limpieza, los antiguos se irían acumulando. El `chown` deja los archivos a nombre del usuario con el que corre nginx, que si no, no puede leerlos.
 
 En el servidor, el archivo [`deploy/nginx.conf`](deploy/nginx.conf) tiene el bloque listo para copiar. La parte importante es esta:
 
