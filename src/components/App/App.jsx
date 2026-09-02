@@ -23,6 +23,17 @@ function getStoredArticles() {
   }
 }
 
+function getStoredVisibleCount() {
+  const stored = Number(localStorage.getItem("visibleCount"));
+  return Number.isInteger(stored) && stored >= CARDS_PER_PAGE
+    ? stored
+    : CARDS_PER_PAGE;
+}
+
+function getStoredKeyword() {
+  return localStorage.getItem("keyword") || "";
+}
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
@@ -32,7 +43,7 @@ function App() {
   const [hasSearched, setHasSearched] = useState(articles.length > 0);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
-  const [visibleCount, setVisibleCount] = useState(CARDS_PER_PAGE);
+  const [visibleCount, setVisibleCount] = useState(getStoredVisibleCount);
   const [savedArticles, setSavedArticles] = useState(MOCK_SAVED_ARTICLES);
 
   const navigate = useNavigate();
@@ -42,6 +53,10 @@ function App() {
       localStorage.setItem("articles", JSON.stringify(articles));
     }
   }, [articles]);
+
+  useEffect(() => {
+    localStorage.setItem("visibleCount", String(visibleCount));
+  }, [visibleCount]);
 
   function handleOpenLogin() {
     setActivePopup("login");
@@ -82,6 +97,7 @@ function App() {
 
         if (formattedArticles.length === 0) {
           localStorage.removeItem("articles");
+          localStorage.removeItem("visibleCount");
         }
       })
       .catch((error) => {
@@ -153,6 +169,7 @@ function App() {
           element={
             <Main
               onSearch={handleSearch}
+              initialKeyword={getStoredKeyword()}
               isSearching={isSearching}
               searchError={searchError}
               hasSearched={hasSearched}

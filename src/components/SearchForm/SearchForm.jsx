@@ -2,9 +2,9 @@ import { useState } from "react";
 import "./SearchForm.css";
 
 export default function SearchForm(props) {
-  const { onSearch } = props;
+  const { onSearch, initialKeyword } = props;
 
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] = useState(initialKeyword || "");
   const [errorMessage, setErrorMessage] = useState("");
 
   function handleChange(event) {

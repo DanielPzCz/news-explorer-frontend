@@ -8,6 +8,7 @@ import About from "../About/About.jsx";
 export default function Main(props) {
   const {
     onSearch,
+    initialKeyword,
     isSearching,
     searchError,
     hasSearched,
@@ -32,7 +33,7 @@ export default function Main(props) {
             Encuentra las últimas noticias sobre cualquier tema y guárdalas en
             tu cuenta personal.
           </p>
-          <SearchForm onSearch={onSearch} />
+          <SearchForm onSearch={onSearch} initialKeyword={initialKeyword} />
         </div>
       </section>
       {showResults && (

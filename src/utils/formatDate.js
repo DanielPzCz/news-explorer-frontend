@@ -20,5 +20,5 @@ export default function formatDate(isoDate) {
     return "";
   }
 
-  return `${date.getDate()} de ${MONTHS[date.getMonth()]} de ${date.getFullYear()}`;
+  return `${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]} de ${date.getUTCFullYear()}`;
 }
