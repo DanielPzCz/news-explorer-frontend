@@ -1,0 +1,29 @@
+.nothing-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0 0;
+  text-align: center;
+}
+
+.nothing-found__icon {
+  width: 96px;
+  height: 96px;
+}
+
+.nothing-found__title {
+  margin-top: 24px;
+  font-family: "Roboto Slab", Georgia, serif;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 30px;
+  color: var(--color-black);
+}
+
+.nothing-found__text {
+  max-width: 356px;
+  margin-top: 16px;
+  font-size: 18px;
+  line-height: 24px;
+  color: var(--color-gray);
+}
