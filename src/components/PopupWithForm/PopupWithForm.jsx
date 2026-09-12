@@ -2,8 +2,18 @@ import { useEffect } from "react";
 import "./PopupWithForm.css";
 
 export default function PopupWithForm(props) {
-  const { name, title, buttonText, isValid, onClose, onSubmit, children, footer } =
-    props;
+  const {
+    name,
+    title,
+    buttonText,
+    isValid,
+    onClose,
+    onSubmit,
+    onInput,
+    serverError,
+    children,
+    footer,
+  } = props;
 
   useEffect(() => {
     function handleEscClose(event) {
@@ -39,8 +49,12 @@ export default function PopupWithForm(props) {
             name={name}
             noValidate
             onSubmit={onSubmit}
+            onInput={onInput}
           >
             {children}
+            {serverError && (
+              <span className="popup__server-error">{serverError}</span>
+            )}
             <button
               className="popup__submit"
               type="submit"

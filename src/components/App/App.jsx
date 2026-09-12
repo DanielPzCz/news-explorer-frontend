@@ -6,13 +6,17 @@ import Header from "../Header/Header.jsx";
 import Main from "../Main/Main.jsx";
 import SavedNews from "../SavedNews/SavedNews.jsx";
 import Footer from "../Footer/Footer.jsx";
-import PopupWithForm from "../PopupWithForm/PopupWithForm.jsx";
+import Login from "../Login/Login.jsx";
+import Register from "../Register/Register.jsx";
+import InfoTooltip from "../InfoTooltip/InfoTooltip.jsx";
 
 import newsApi from "../../utils/NewsApi.js";
+import mainApi from "../../utils/MainApi.js";
 import {
   MOCK_SAVED_ARTICLES,
   CARDS_PER_PAGE,
   SEARCH_ERROR_MESSAGE,
+  AUTH_ERROR_MESSAGES,
 } from "../../utils/constants.js";
 
 function getStoredArticles() {
@@ -38,6 +42,7 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const [activePopup, setActivePopup] = useState(null);
+  const [authError, setAuthError] = useState("");
 
   const [articles, setArticles] = useState(getStoredArticles);
   const [hasSearched, setHasSearched] = useState(articles.length > 0);
@@ -59,15 +64,18 @@ function App() {
   }, [visibleCount]);
 
   function handleOpenLogin() {
+    setAuthError("");
     setActivePopup("login");
   }
 
   function handleOpenRegister() {
+    setAuthError("");
     setActivePopup("register");
   }
 
   function handleClosePopup() {
     setActivePopup(null);
+    setAuthError("");
   }
 
   function handleSearch(keyword) {
@@ -114,19 +122,42 @@ function App() {
     setVisibleCount(visibleCount + CARDS_PER_PAGE);
   }
 
-  function handleLoginSubmit(event) {
-    event.preventDefault();
-    setLoggedIn(true);
-    setUserName("Daniel");
-    handleClosePopup();
+  function handleRegister(email, password, name) {
+    setAuthError("");
+
+    mainApi
+      .register(email, password, name)
+      .then(() => {
+        setActivePopup("success");
+      })
+      .catch((error) => {
+        console.error("Error al registrar al usuario:", error);
+        setAuthError(AUTH_ERROR_MESSAGES.register);
+      });
   }
 
-  function handleRegisterSubmit(event) {
-    event.preventDefault();
-    handleClosePopup();
+  function handleLogin(email, password) {
+    setAuthError("");
+
+    mainApi
+      .authorize(email, password)
+      .then((data) => {
+        localStorage.setItem("jwt", data.token);
+        return mainApi.getUserInfo();
+      })
+      .then((userData) => {
+        setUserName(userData.name);
+        setLoggedIn(true);
+        handleClosePopup();
+      })
+      .catch((error) => {
+        console.error("Error al iniciar sesión:", error);
+        setAuthError(AUTH_ERROR_MESSAGES.login);
+      });
   }
 
   function handleSignOut() {
+    localStorage.removeItem("jwt");
     setLoggedIn(false);
     setUserName("");
     navigate("/");
@@ -198,104 +229,28 @@ function App() {
       <Footer />
 
       {activePopup === "login" && (
-        <PopupWithForm
-          name="login"
-          title="Inicia sesión"
-          buttonText="Inicia sesión"
+        <Login
+          onLogin={handleLogin}
           onClose={handleClosePopup}
-          onSubmit={handleLoginSubmit}
-          footer={
-            <>
-              o{" "}
-              <button
-                className="popup__footer-link"
-                type="button"
-                onClick={handleOpenRegister}
-              >
-                Regístrate
-              </button>
-            </>
-          }
-        >
-          <label className="popup__label" htmlFor="login-email">
-            Correo electrónico
-          </label>
-          <input
-            className="popup__input"
-            id="login-email"
-            name="email"
-            type="email"
-            placeholder="Introduce tu correo electrónico"
-            required
-          />
-          <label className="popup__label" htmlFor="login-password">
-            Contraseña
-          </label>
-          <input
-            className="popup__input"
-            id="login-password"
-            name="password"
-            type="password"
-            placeholder="Introduce tu contraseña"
-            required
-          />
-        </PopupWithForm>
+          onSwitchToRegister={handleOpenRegister}
+          serverError={authError}
+        />
       )}
 
       {activePopup === "register" && (
-        <PopupWithForm
-          name="register"
-          title="Regístrate"
-          buttonText="Regístrate"
+        <Register
+          onRegister={handleRegister}
           onClose={handleClosePopup}
-          onSubmit={handleRegisterSubmit}
-          footer={
-            <>
-              o{" "}
-              <button
-                className="popup__footer-link"
-                type="button"
-                onClick={handleOpenLogin}
-              >
-                Inicia sesión
-              </button>
-            </>
-          }
-        >
-          <label className="popup__label" htmlFor="register-email">
-            Correo electrónico
-          </label>
-          <input
-            className="popup__input"
-            id="register-email"
-            name="email"
-            type="email"
-            placeholder="Introduce tu correo electrónico"
-            required
-          />
-          <label className="popup__label" htmlFor="register-password">
-            Contraseña
-          </label>
-          <input
-            className="popup__input"
-            id="register-password"
-            name="password"
-            type="password"
-            placeholder="Introduce una contraseña"
-            required
-          />
-          <label className="popup__label" htmlFor="register-name">
-            Nombre de usuario
-          </label>
-          <input
-            className="popup__input"
-            id="register-name"
-            name="name"
-            type="text"
-            placeholder="Introduce tu nombre de usuario"
-            required
-          />
-        </PopupWithForm>
+          onSwitchToLogin={handleOpenLogin}
+          serverError={authError}
+        />
+      )}
+
+      {activePopup === "success" && (
+        <InfoTooltip
+          onClose={handleClosePopup}
+          onSwitchToLogin={handleOpenLogin}
+        />
       )}
     </div>
   );

@@ -3,6 +3,11 @@ export const SEARCH_ERROR_MESSAGE =
 
 export const EMPTY_KEYWORD_MESSAGE = "Por favor, introduce una palabra clave";
 
+export const AUTH_ERROR_MESSAGES = {
+  login: "Correo electrónico o contraseña incorrectos",
+  register: "Este correo electrónico no está disponible",
+};
+
 export const CARDS_PER_PAGE = 3;
 
 import cardCorgi from "../images/card-corgi.jpg";
