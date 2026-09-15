@@ -15,18 +15,27 @@ Escribes un tema en el buscador y la aplicación consulta [News API](https://new
 - **Estados claros**: si no hay resultados aparece "No se ha encontrado nada"; si la solicitud falla, un mensaje explicando que puede ser un problema de conexión.
 - **Mostrar más**: los artículos se revelan de tres en tres y el botón desaparece cuando ya no queda ninguno.
 - **La búsqueda sobrevive**: al volver al sitio se recuperan los resultados, el término buscado y la cantidad de tarjetas que tenías abiertas.
-- **Artículos guardados** en una página aparte (`/saved-news`), con el conteo y las palabras clave ordenadas por popularidad.
 - **Diseño responsivo** de 320 px a 1440 px, con menú hamburguesa en móvil.
-- **Ventanas modales** de registro e inicio de sesión que se cierran con la ✕, con un clic fuera o con la tecla Esc.
+
+Con una cuenta, además:
+
+- **Registro e inicio de sesión** en ventanas modales, con validación instantánea: los mensajes de error aparecen mientras escribes y el botón sigue gris hasta que el formulario es válido. Se cierran con la ✕, con un clic fuera o con la tecla Esc.
+- **Guardar artículos**: el marcador de cada tarjeta se pinta de azul y el artículo se envía a la API propia. Sin sesión iniciada, el marcador invita a iniciar sesión.
+- **Artículos guardados** en una página aparte (`/saved-news`), con el conteo y las palabras clave ordenadas por popularidad, y una papelera para eliminarlos.
+- **Ruta protegida**: `/saved-news` solo se abre con la sesión iniciada. Entrar por un enlace directo devuelve a la página principal y abre la ventana de inicio de sesión.
+- **La sesión sobrevive**: el token se guarda en `localStorage` y se valida contra `/users/me` al abrir la aplicación.
 
 ## Tecnologías
 
-- **React 19** con componentes funcionales y hooks (`useState`, `useEffect`)
+- **React 19** con componentes funcionales y hooks (`useState`, `useEffect`, `useContext`, `useCallback`)
+  - `CurrentUserContext` para compartir el usuario actual sin pasarlo por props
+  - Hook propio `useFormValidation` para la validación de los formularios
+  - Componente de orden superior `ProtectedRoute` para la ruta privada
 - **React Router 8** para las rutas `/` y `/saved-news`
 - **Vite** como empaquetador y servidor de desarrollo
 - **CSS3** con metodología BEM, flexbox y grid, media queries, y fuentes cargadas con `@font-face` (Roboto, Roboto Slab e Inter)
-- **Fetch API** para consultar News API
-- **localStorage** para conservar la última búsqueda
+- **Fetch API** para consultar News API (`NewsApi.js`) y la API propia (`MainApi.js`)
+- **localStorage** para conservar la última búsqueda y el token de la sesión
 - **ESLint** para mantener el código consistente
 
 ## Estructura del proyecto
@@ -34,7 +43,9 @@ Escribes un tema en el buscador y la aplicación consulta [News API](https://new
 ```
 src/
 ├── components/     un directorio por componente, con su JSX y su CSS
-├── utils/          NewsApi.js, configuración, constantes y utilidades
+├── contexts/       CurrentUserContext
+├── hooks/          useFormValidation
+├── utils/          NewsApi.js, MainApi.js, configuración, constantes y utilidades
 ├── images/         imágenes e iconos SVG
 ├── vendor/         normalize.css y las fuentes en formato WOFF
 └── index.css       estilos base y variables de color
@@ -70,12 +81,35 @@ npm run lint      # revisa el código con ESLint
 
 La clave vive en `src/utils/config.js`. En la versión gratuita, News API **solo acepta solicitudes desde `localhost`**, así que la aplicación cambia de dirección según el entorno:
 
-| Entorno | Servicio que se consulta |
-| --- | --- |
-| Desarrollo (`npm run dev`) | `https://newsapi.org/v2` |
+| Entorno                      | Servicio que se consulta                                  |
+| ---------------------------- | --------------------------------------------------------- |
+| Desarrollo (`npm run dev`)   | `https://newsapi.org/v2`                                  |
 | Producción (`npm run build`) | `https://nomoreparties.co/news/v2`, el proxy de TripleTen |
 
 El cambio es automático, no hay que tocar nada al desplegar.
+
+## La API propia
+
+El registro de usuarios y el guardado de artículos los atiende un back-end hecho con Node.js, Express y MongoDB, que vive en su propio repositorio: [news-explorer-backend](https://github.com/DanielPzCz/news-explorer-backend).
+
+### → https://api.news.around-daniel.lat
+
+`MainApi.js` es la clase que habla con él: `/signup`, `/signin`, `/users/me` y `/articles`. Las rutas privadas se piden con el encabezado `Authorization: Bearer <token>`.
+
+La dirección se resuelve en `src/utils/config.js` a partir de la variable `VITE_API_URL`:
+
+| Entorno                      | Dirección de la API                                                |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Desarrollo (`npm run dev`)   | `http://localhost:3001`, el valor por defecto                      |
+| Producción (`npm run build`) | lo que diga `VITE_API_URL` en [`.env.production`](.env.production) |
+
+Para levantar el back-end en tu computadora, sigue las instrucciones de su repositorio y, si lo pones en otro puerto, crea un archivo `.env.local` con la dirección que quieras:
+
+```bash
+VITE_API_URL=http://localhost:3000
+```
+
+Vite solo expone al navegador las variables que empiezan con `VITE_`, y las resuelve al compilar, no al ejecutar: si cambias el archivo hay que volver a compilar.
 
 ## Despliegue
 
@@ -99,19 +133,7 @@ rm -rf ~/dist-nuevo
 
 Se borra la carpeta antes de copiar porque Vite nombra los archivos con un hash del contenido: en cada compilación cambian de nombre y, sin la limpieza, los antiguos se irían acumulando. El `chown` deja los archivos a nombre del usuario con el que corre nginx, que si no, no puede leerlos.
 
-En el servidor, el archivo [`deploy/nginx.conf`](deploy/nginx.conf) tiene el bloque listo para copiar. La parte importante es esta:
-
-```nginx
-location / {
-    try_files $uri $uri/ /index.html;
-}
-```
-
-Sin esa línea, entrar directamente a `/saved-news` o recargar la página estando ahí devolvería un 404: esa ruta no existe como archivo, la resuelve React Router en el navegador. El certificado HTTPS se emite con `certbot --nginx`.
-
-## Estado del proyecto
-
-Esta es la primera etapa: la interfaz completa conectada a News API. En las siguientes se añade una API propia con Node.js, Express y MongoDB para el registro de usuarios y el guardado real de artículos, en el repositorio [news-explorer-backend](https://github.com/DanielPzCz/news-explorer-backend).
+En el servidor, el archivo [`deploy/nginx.conf`](deploy/nginx.conf) tiene el bloque listo para copiar.
 
 ## Autor
 
