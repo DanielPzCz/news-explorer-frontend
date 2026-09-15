@@ -19,7 +19,10 @@ class MainApi {
     if (response.ok) {
       return response.json();
     }
-    return Promise.reject(`Error ${response.status}`);
+
+    const error = new Error(`Error ${response.status}`);
+    error.status = response.status;
+    return Promise.reject(error);
   }
 
   register(email, password, name) {

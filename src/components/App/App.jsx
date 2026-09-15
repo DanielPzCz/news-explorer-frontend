@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router";
 import "./App.css";
 
@@ -9,11 +9,12 @@ import Footer from "../Footer/Footer.jsx";
 import Login from "../Login/Login.jsx";
 import Register from "../Register/Register.jsx";
 import InfoTooltip from "../InfoTooltip/InfoTooltip.jsx";
+import ProtectedRoute from "../ProtectedRoute/ProtectedRoute.jsx";
 
+import CurrentUserContext from "../../contexts/CurrentUserContext.js";
 import newsApi from "../../utils/NewsApi.js";
 import mainApi from "../../utils/MainApi.js";
 import {
-  MOCK_SAVED_ARTICLES,
   CARDS_PER_PAGE,
   SEARCH_ERROR_MESSAGE,
   AUTH_ERROR_MESSAGES,
@@ -39,8 +40,11 @@ function getStoredKeyword() {
 }
 
 function App() {
+  const [currentUser, setCurrentUser] = useState({});
   const [loggedIn, setLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
+  const [isTokenChecked, setIsTokenChecked] = useState(
+    () => !localStorage.getItem("jwt"),
+  );
   const [activePopup, setActivePopup] = useState(null);
   const [authError, setAuthError] = useState("");
 
@@ -49,9 +53,46 @@ function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [visibleCount, setVisibleCount] = useState(getStoredVisibleCount);
-  const [savedArticles, setSavedArticles] = useState(MOCK_SAVED_ARTICLES);
+  const [savedArticles, setSavedArticles] = useState([]);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("jwt");
+
+    if (!token) {
+      return;
+    }
+
+    mainApi
+      .getUserInfo()
+      .then((userData) => {
+        setCurrentUser(userData);
+        setLoggedIn(true);
+      })
+      .catch((error) => {
+        console.error("Error al validar el token:", error);
+        localStorage.removeItem("jwt");
+      })
+      .finally(() => {
+        setIsTokenChecked(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!loggedIn) {
+      return;
+    }
+
+    mainApi
+      .getSavedArticles()
+      .then((articlesData) => {
+        setSavedArticles(articlesData);
+      })
+      .catch((error) => {
+        console.error("Error al obtener los artículos guardados:", error);
+      });
+  }, [loggedIn]);
 
   useEffect(() => {
     if (articles.length > 0) {
@@ -77,6 +118,10 @@ function App() {
     setActivePopup(null);
     setAuthError("");
   }
+
+  const handleUnauthorized = useCallback(() => {
+    setActivePopup("login");
+  }, []);
 
   function handleSearch(keyword) {
     setIsSearching(true);
@@ -132,7 +177,11 @@ function App() {
       })
       .catch((error) => {
         console.error("Error al registrar al usuario:", error);
-        setAuthError(AUTH_ERROR_MESSAGES.register);
+        setAuthError(
+          error.status === 409
+            ? AUTH_ERROR_MESSAGES.emailTaken
+            : AUTH_ERROR_MESSAGES.server,
+        );
       });
   }
 
@@ -146,113 +195,149 @@ function App() {
         return mainApi.getUserInfo();
       })
       .then((userData) => {
-        setUserName(userData.name);
+        setCurrentUser(userData);
         setLoggedIn(true);
         handleClosePopup();
       })
       .catch((error) => {
         console.error("Error al iniciar sesión:", error);
-        setAuthError(AUTH_ERROR_MESSAGES.login);
+        setAuthError(
+          error.status === 401
+            ? AUTH_ERROR_MESSAGES.wrongCredentials
+            : AUTH_ERROR_MESSAGES.server,
+        );
       });
   }
 
   function handleSignOut() {
     localStorage.removeItem("jwt");
     setLoggedIn(false);
-    setUserName("");
+    setCurrentUser({});
+    setSavedArticles([]);
     navigate("/");
   }
 
   function handleSaveArticle(article) {
-    const isSaved = savedArticles.some(
-      (savedArticle) => savedArticle.link === article.link,
+    const savedArticle = savedArticles.find(
+      (item) => item.link === article.link,
     );
 
-    if (isSaved) {
-      setSavedArticles(
-        savedArticles.filter(
-          (savedArticle) => savedArticle.link !== article.link,
-        ),
-      );
-    } else {
-      setSavedArticles([article, ...savedArticles]);
+    if (savedArticle) {
+      mainApi
+        .deleteArticle(savedArticle._id)
+        .then(() => {
+          setSavedArticles((state) =>
+            state.filter((item) => item._id !== savedArticle._id),
+          );
+        })
+        .catch((error) => {
+          console.error("Error al quitar el artículo de guardados:", error);
+        });
+      return;
     }
+
+    mainApi
+      .saveArticle(article)
+      .then((newArticle) => {
+        setSavedArticles((state) => [newArticle, ...state]);
+      })
+      .catch((error) => {
+        console.error("Error al guardar el artículo:", error);
+      });
   }
 
   function handleDeleteArticle(article) {
-    setSavedArticles(
-      savedArticles.filter((savedArticle) => savedArticle._id !== article._id),
-    );
+    mainApi
+      .deleteArticle(article._id)
+      .then(() => {
+        setSavedArticles((state) =>
+          state.filter((item) => item._id !== article._id),
+        );
+      })
+      .catch((error) => {
+        console.error("Error al eliminar el artículo:", error);
+      });
+  }
+
+  if (!isTokenChecked) {
+    return null;
   }
 
   return (
-    <div className="page">
-      <Header
-        loggedIn={loggedIn}
-        userName={userName}
-        onLoginClick={handleOpenLogin}
-        onSignOut={handleSignOut}
-      />
-
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Main
-              onSearch={handleSearch}
-              initialKeyword={getStoredKeyword()}
-              isSearching={isSearching}
-              searchError={searchError}
-              hasSearched={hasSearched}
-              articles={articles}
-              visibleCount={visibleCount}
-              onShowMore={handleShowMore}
-              loggedIn={loggedIn}
-              savedArticles={savedArticles}
-              onSave={handleSaveArticle}
-            />
-          }
+    <CurrentUserContext.Provider value={currentUser}>
+      <div className="page">
+        <Header
+          loggedIn={loggedIn}
+          userName={currentUser.name}
+          onLoginClick={handleOpenLogin}
+          onSignOut={handleSignOut}
         />
-        <Route
-          path="/saved-news"
-          element={
-            <SavedNews
-              userName={userName || "Daniel"}
-              savedArticles={savedArticles}
-              onDelete={handleDeleteArticle}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
 
-      <Footer />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Main
+                onSearch={handleSearch}
+                initialKeyword={getStoredKeyword()}
+                isSearching={isSearching}
+                searchError={searchError}
+                hasSearched={hasSearched}
+                articles={articles}
+                visibleCount={visibleCount}
+                onShowMore={handleShowMore}
+                loggedIn={loggedIn}
+                savedArticles={savedArticles}
+                onSave={handleSaveArticle}
+              />
+            }
+          />
+          <Route
+            path="/saved-news"
+            element={
+              <ProtectedRoute
+                loggedIn={loggedIn}
+                onUnauthorized={handleUnauthorized}
+              >
+                <SavedNews
+                  userName={currentUser.name}
+                  savedArticles={savedArticles}
+                  onDelete={handleDeleteArticle}
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
-      {activePopup === "login" && (
-        <Login
-          onLogin={handleLogin}
-          onClose={handleClosePopup}
-          onSwitchToRegister={handleOpenRegister}
-          serverError={authError}
-        />
-      )}
+        <Footer />
 
-      {activePopup === "register" && (
-        <Register
-          onRegister={handleRegister}
-          onClose={handleClosePopup}
-          onSwitchToLogin={handleOpenLogin}
-          serverError={authError}
-        />
-      )}
+        {activePopup === "login" && (
+          <Login
+            onLogin={handleLogin}
+            onClose={handleClosePopup}
+            onSwitchToRegister={handleOpenRegister}
+            serverError={authError}
+          />
+        )}
 
-      {activePopup === "success" && (
-        <InfoTooltip
-          onClose={handleClosePopup}
-          onSwitchToLogin={handleOpenLogin}
-        />
-      )}
-    </div>
+        {activePopup === "register" && (
+          <Register
+            onRegister={handleRegister}
+            onClose={handleClosePopup}
+            onSwitchToLogin={handleOpenLogin}
+            serverError={authError}
+          />
+        )}
+
+        {activePopup === "success" && (
+          <InfoTooltip
+            onClose={handleClosePopup}
+            onSwitchToLogin={handleOpenLogin}
+          />
+        )}
+      </div>
+    </CurrentUserContext.Provider>
   );
 }
 
