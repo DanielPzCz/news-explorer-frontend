@@ -218,6 +218,11 @@ function App() {
   }
 
   function handleSaveArticle(article) {
+    if (!loggedIn) {
+      handleOpenRegister();
+      return;
+    }
+
     const savedArticle = savedArticles.find(
       (item) => item.link === article.link,
     );
@@ -268,7 +273,6 @@ function App() {
       <div className="page">
         <Header
           loggedIn={loggedIn}
-          userName={currentUser.name}
           onLoginClick={handleOpenLogin}
           onSignOut={handleSignOut}
         />
@@ -300,7 +304,6 @@ function App() {
                 onUnauthorized={handleUnauthorized}
               >
                 <SavedNews
-                  userName={currentUser.name}
                   savedArticles={savedArticles}
                   onDelete={handleDeleteArticle}
                 />

@@ -66,7 +66,6 @@ export default function Register(props) {
         name="password"
         type="password"
         placeholder="Introduce una contraseña"
-        minLength={8}
         pattern=".{8,}"
         data-error-message="La contraseña debe tener al menos 8 caracteres"
         required

@@ -20,10 +20,5 @@ export default function useFormValidation() {
     setIsValid(form.checkValidity());
   }, []);
 
-  const resetValidation = useCallback((validity = false) => {
-    setErrors({});
-    setIsValid(validity);
-  }, []);
-
-  return { errors, isValid, handleInput, resetValidation };
+  return { errors, isValid, handleInput };
 }
