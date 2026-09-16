@@ -1,4 +1,6 @@
+import { useContext } from "react";
 import "./SavedNewsHeader.css";
+import CurrentUserContext from "../../contexts/CurrentUserContext.js";
 
 function getSortedKeywords(articles) {
   const counter = {};
@@ -24,15 +26,16 @@ function formatKeywords(keywords) {
 }
 
 export default function SavedNewsHeader(props) {
-  const { userName, articles } = props;
+  const { articles } = props;
 
+  const currentUser = useContext(CurrentUserContext);
   const keywords = getSortedKeywords(articles);
 
   return (
     <section className="saved-header">
       <p className="saved-header__caption">Artículos guardados</p>
       <h1 className="saved-header__title">
-        {userName}, tienes {articles.length}{" "}
+        {currentUser.name}, tienes {articles.length}{" "}
         {articles.length === 1 ? "artículo guardado" : "artículos guardados"}
       </h1>
       {keywords.length > 0 && (

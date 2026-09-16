@@ -79,12 +79,17 @@
 }
 
 .popup__error {
+  visibility: hidden;
   min-height: 15px;
   margin-top: 3px;
   font-family: "Inter", Arial, sans-serif;
   font-size: 12px;
   line-height: 15px;
   color: var(--color-error);
+}
+
+.popup__error_active {
+  visibility: visible;
 }
 
 .popup__server-error {

@@ -6,3 +6,6 @@ export const NEWS_API_BASE_URL = import.meta.env.PROD
 
 export const NEWS_API_PAGE_SIZE = 100;
 export const NEWS_API_DAYS_BACK = 7;
+
+export const MAIN_API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:3001";

@@ -7,7 +7,7 @@ import menuBlack from "../../images/menu-black.svg";
 import closeWhite from "../../images/close-white.svg";
 
 export default function Header(props) {
-  const { loggedIn, userName, onLoginClick, onSignOut } = props;
+  const { loggedIn, onLoginClick, onSignOut } = props;
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
@@ -47,7 +47,6 @@ export default function Header(props) {
         </button>
         <Navigation
           loggedIn={loggedIn}
-          userName={userName}
           isDarkTheme={isDarkTheme}
           isMenuOpen={isMenuOpen}
           onLoginClick={onLoginClick}
