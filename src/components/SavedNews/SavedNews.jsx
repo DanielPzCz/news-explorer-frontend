@@ -3,11 +3,11 @@ import SavedNewsHeader from "../SavedNewsHeader/SavedNewsHeader.jsx";
 import NewsCardList from "../NewsCardList/NewsCardList.jsx";
 
 export default function SavedNews(props) {
-  const { userName, savedArticles, onDelete } = props;
+  const { savedArticles, onDelete } = props;
 
   return (
     <main className="saved-news">
-      <SavedNewsHeader userName={userName} articles={savedArticles} />
+      <SavedNewsHeader articles={savedArticles} />
       <section className="saved-news__cards">
         <NewsCardList
           articles={savedArticles}

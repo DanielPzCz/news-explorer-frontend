@@ -1,18 +1,21 @@
+import { useContext } from "react";
 import { NavLink } from "react-router";
 import "./Navigation.css";
 import logoutWhite from "../../images/logout-white.svg";
 import logoutBlack from "../../images/logout-black.svg";
+import CurrentUserContext from "../../contexts/CurrentUserContext.js";
 
 export default function Navigation(props) {
   const {
     loggedIn,
-    userName,
     isDarkTheme,
     isMenuOpen,
     onLoginClick,
     onSignOut,
     onCloseMenu,
   } = props;
+
+  const currentUser = useContext(CurrentUserContext);
 
   const logoutIcon = isDarkTheme ? logoutWhite : logoutBlack;
 
@@ -59,7 +62,7 @@ export default function Navigation(props) {
               type="button"
               onClick={handleSignOutClick}
             >
-              <span className="navigation__user">{userName}</span>
+              <span className="navigation__user">{currentUser.name}</span>
               <img
                 alt="Cerrar sesión"
                 className="navigation__logout-icon"

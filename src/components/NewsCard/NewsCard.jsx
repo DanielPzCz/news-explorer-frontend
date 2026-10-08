@@ -6,9 +6,6 @@ export default function NewsCard(props) {
   const { article, loggedIn, isSaved, isSavedPage, onSave, onDelete } = props;
 
   function handleSaveClick() {
-    if (!loggedIn) {
-      return;
-    }
     onSave(article);
   }
 

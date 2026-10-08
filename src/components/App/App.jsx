@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router";
 import "./App.css";
 
@@ -6,13 +6,18 @@ import Header from "../Header/Header.jsx";
 import Main from "../Main/Main.jsx";
 import SavedNews from "../SavedNews/SavedNews.jsx";
 import Footer from "../Footer/Footer.jsx";
-import PopupWithForm from "../PopupWithForm/PopupWithForm.jsx";
+import Login from "../Login/Login.jsx";
+import Register from "../Register/Register.jsx";
+import InfoTooltip from "../InfoTooltip/InfoTooltip.jsx";
+import ProtectedRoute from "../ProtectedRoute/ProtectedRoute.jsx";
 
+import CurrentUserContext from "../../contexts/CurrentUserContext.js";
 import newsApi from "../../utils/NewsApi.js";
+import mainApi from "../../utils/MainApi.js";
 import {
-  MOCK_SAVED_ARTICLES,
   CARDS_PER_PAGE,
   SEARCH_ERROR_MESSAGE,
+  AUTH_ERROR_MESSAGES,
 } from "../../utils/constants.js";
 
 function getStoredArticles() {
@@ -35,18 +40,59 @@ function getStoredKeyword() {
 }
 
 function App() {
+  const [currentUser, setCurrentUser] = useState({});
   const [loggedIn, setLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
+  const [isTokenChecked, setIsTokenChecked] = useState(
+    () => !localStorage.getItem("jwt"),
+  );
   const [activePopup, setActivePopup] = useState(null);
+  const [authError, setAuthError] = useState("");
 
   const [articles, setArticles] = useState(getStoredArticles);
   const [hasSearched, setHasSearched] = useState(articles.length > 0);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [visibleCount, setVisibleCount] = useState(getStoredVisibleCount);
-  const [savedArticles, setSavedArticles] = useState(MOCK_SAVED_ARTICLES);
+  const [savedArticles, setSavedArticles] = useState([]);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("jwt");
+
+    if (!token) {
+      return;
+    }
+
+    mainApi
+      .getUserInfo()
+      .then((userData) => {
+        setCurrentUser(userData);
+        setLoggedIn(true);
+      })
+      .catch((error) => {
+        console.error("Error al validar el token:", error);
+        localStorage.removeItem("jwt");
+      })
+      .finally(() => {
+        setIsTokenChecked(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!loggedIn) {
+      return;
+    }
+
+    mainApi
+      .getSavedArticles()
+      .then((articlesData) => {
+        setSavedArticles(articlesData);
+      })
+      .catch((error) => {
+        console.error("Error al obtener los artículos guardados:", error);
+      });
+  }, [loggedIn]);
 
   useEffect(() => {
     if (articles.length > 0) {
@@ -59,16 +105,23 @@ function App() {
   }, [visibleCount]);
 
   function handleOpenLogin() {
+    setAuthError("");
     setActivePopup("login");
   }
 
   function handleOpenRegister() {
+    setAuthError("");
     setActivePopup("register");
   }
 
   function handleClosePopup() {
     setActivePopup(null);
+    setAuthError("");
   }
+
+  const handleUnauthorized = useCallback(() => {
+    setActivePopup("login");
+  }, []);
 
   function handleSearch(keyword) {
     setIsSearching(true);
@@ -114,190 +167,180 @@ function App() {
     setVisibleCount(visibleCount + CARDS_PER_PAGE);
   }
 
-  function handleLoginSubmit(event) {
-    event.preventDefault();
-    setLoggedIn(true);
-    setUserName("Daniel");
-    handleClosePopup();
+  function handleRegister(email, password, name) {
+    setAuthError("");
+
+    mainApi
+      .register(email, password, name)
+      .then(() => {
+        setActivePopup("success");
+      })
+      .catch((error) => {
+        console.error("Error al registrar al usuario:", error);
+        setAuthError(
+          error.status === 409
+            ? AUTH_ERROR_MESSAGES.emailTaken
+            : AUTH_ERROR_MESSAGES.server,
+        );
+      });
   }
 
-  function handleRegisterSubmit(event) {
-    event.preventDefault();
-    handleClosePopup();
+  function handleLogin(email, password) {
+    setAuthError("");
+
+    mainApi
+      .authorize(email, password)
+      .then((data) => {
+        localStorage.setItem("jwt", data.token);
+        return mainApi.getUserInfo();
+      })
+      .then((userData) => {
+        setCurrentUser(userData);
+        setLoggedIn(true);
+        handleClosePopup();
+      })
+      .catch((error) => {
+        console.error("Error al iniciar sesión:", error);
+        setAuthError(
+          error.status === 401
+            ? AUTH_ERROR_MESSAGES.wrongCredentials
+            : AUTH_ERROR_MESSAGES.server,
+        );
+      });
   }
 
   function handleSignOut() {
+    localStorage.removeItem("jwt");
     setLoggedIn(false);
-    setUserName("");
+    setCurrentUser({});
+    setSavedArticles([]);
     navigate("/");
   }
 
   function handleSaveArticle(article) {
-    const isSaved = savedArticles.some(
-      (savedArticle) => savedArticle.link === article.link,
+    if (!loggedIn) {
+      handleOpenRegister();
+      return;
+    }
+
+    const savedArticle = savedArticles.find(
+      (item) => item.link === article.link,
     );
 
-    if (isSaved) {
-      setSavedArticles(
-        savedArticles.filter(
-          (savedArticle) => savedArticle.link !== article.link,
-        ),
-      );
-    } else {
-      setSavedArticles([article, ...savedArticles]);
+    if (savedArticle) {
+      mainApi
+        .deleteArticle(savedArticle._id)
+        .then(() => {
+          setSavedArticles((state) =>
+            state.filter((item) => item._id !== savedArticle._id),
+          );
+        })
+        .catch((error) => {
+          console.error("Error al quitar el artículo de guardados:", error);
+        });
+      return;
     }
+
+    mainApi
+      .saveArticle(article)
+      .then((newArticle) => {
+        setSavedArticles((state) => [newArticle, ...state]);
+      })
+      .catch((error) => {
+        console.error("Error al guardar el artículo:", error);
+      });
   }
 
   function handleDeleteArticle(article) {
-    setSavedArticles(
-      savedArticles.filter((savedArticle) => savedArticle._id !== article._id),
-    );
+    mainApi
+      .deleteArticle(article._id)
+      .then(() => {
+        setSavedArticles((state) =>
+          state.filter((item) => item._id !== article._id),
+        );
+      })
+      .catch((error) => {
+        console.error("Error al eliminar el artículo:", error);
+      });
+  }
+
+  if (!isTokenChecked) {
+    return null;
   }
 
   return (
-    <div className="page">
-      <Header
-        loggedIn={loggedIn}
-        userName={userName}
-        onLoginClick={handleOpenLogin}
-        onSignOut={handleSignOut}
-      />
-
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Main
-              onSearch={handleSearch}
-              initialKeyword={getStoredKeyword()}
-              isSearching={isSearching}
-              searchError={searchError}
-              hasSearched={hasSearched}
-              articles={articles}
-              visibleCount={visibleCount}
-              onShowMore={handleShowMore}
-              loggedIn={loggedIn}
-              savedArticles={savedArticles}
-              onSave={handleSaveArticle}
-            />
-          }
+    <CurrentUserContext.Provider value={currentUser}>
+      <div className="page">
+        <Header
+          loggedIn={loggedIn}
+          onLoginClick={handleOpenLogin}
+          onSignOut={handleSignOut}
         />
-        <Route
-          path="/saved-news"
-          element={
-            <SavedNews
-              userName={userName || "Daniel"}
-              savedArticles={savedArticles}
-              onDelete={handleDeleteArticle}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
 
-      <Footer />
-
-      {activePopup === "login" && (
-        <PopupWithForm
-          name="login"
-          title="Inicia sesión"
-          buttonText="Inicia sesión"
-          onClose={handleClosePopup}
-          onSubmit={handleLoginSubmit}
-          footer={
-            <>
-              o{" "}
-              <button
-                className="popup__footer-link"
-                type="button"
-                onClick={handleOpenRegister}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Main
+                onSearch={handleSearch}
+                initialKeyword={getStoredKeyword()}
+                isSearching={isSearching}
+                searchError={searchError}
+                hasSearched={hasSearched}
+                articles={articles}
+                visibleCount={visibleCount}
+                onShowMore={handleShowMore}
+                loggedIn={loggedIn}
+                savedArticles={savedArticles}
+                onSave={handleSaveArticle}
+              />
+            }
+          />
+          <Route
+            path="/saved-news"
+            element={
+              <ProtectedRoute
+                loggedIn={loggedIn}
+                onUnauthorized={handleUnauthorized}
               >
-                Regístrate
-              </button>
-            </>
-          }
-        >
-          <label className="popup__label" htmlFor="login-email">
-            Correo electrónico
-          </label>
-          <input
-            className="popup__input"
-            id="login-email"
-            name="email"
-            type="email"
-            placeholder="Introduce tu correo electrónico"
-            required
+                <SavedNews
+                  savedArticles={savedArticles}
+                  onDelete={handleDeleteArticle}
+                />
+              </ProtectedRoute>
+            }
           />
-          <label className="popup__label" htmlFor="login-password">
-            Contraseña
-          </label>
-          <input
-            className="popup__input"
-            id="login-password"
-            name="password"
-            type="password"
-            placeholder="Introduce tu contraseña"
-            required
-          />
-        </PopupWithForm>
-      )}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
-      {activePopup === "register" && (
-        <PopupWithForm
-          name="register"
-          title="Regístrate"
-          buttonText="Regístrate"
-          onClose={handleClosePopup}
-          onSubmit={handleRegisterSubmit}
-          footer={
-            <>
-              o{" "}
-              <button
-                className="popup__footer-link"
-                type="button"
-                onClick={handleOpenLogin}
-              >
-                Inicia sesión
-              </button>
-            </>
-          }
-        >
-          <label className="popup__label" htmlFor="register-email">
-            Correo electrónico
-          </label>
-          <input
-            className="popup__input"
-            id="register-email"
-            name="email"
-            type="email"
-            placeholder="Introduce tu correo electrónico"
-            required
+        <Footer />
+
+        {activePopup === "login" && (
+          <Login
+            onLogin={handleLogin}
+            onClose={handleClosePopup}
+            onSwitchToRegister={handleOpenRegister}
+            serverError={authError}
           />
-          <label className="popup__label" htmlFor="register-password">
-            Contraseña
-          </label>
-          <input
-            className="popup__input"
-            id="register-password"
-            name="password"
-            type="password"
-            placeholder="Introduce una contraseña"
-            required
+        )}
+
+        {activePopup === "register" && (
+          <Register
+            onRegister={handleRegister}
+            onClose={handleClosePopup}
+            onSwitchToLogin={handleOpenLogin}
+            serverError={authError}
           />
-          <label className="popup__label" htmlFor="register-name">
-            Nombre de usuario
-          </label>
-          <input
-            className="popup__input"
-            id="register-name"
-            name="name"
-            type="text"
-            placeholder="Introduce tu nombre de usuario"
-            required
+        )}
+
+        {activePopup === "success" && (
+          <InfoTooltip
+            onClose={handleClosePopup}
+            onSwitchToLogin={handleOpenLogin}
           />
-        </PopupWithForm>
-      )}
-    </div>
+        )}
+      </div>
+    </CurrentUserContext.Provider>
   );
 }
 
